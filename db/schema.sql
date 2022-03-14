@@ -1,6 +1,6 @@
+DROP TABLE IF EXISTS employees;
 DROP TABLE IF EXISTS roles;
 DROP TABLE IF EXISTS departments;
-DROP TABLE IF EXISTS employees;
 
 CREATE TABLE departments (
   id INT PRIMARY KEY AUTO_INCREMENT,
@@ -20,7 +20,6 @@ CREATE TABLE employees (
   first_name VARCHAR(30) NOT NULL,
   last_name VARCHAR(30) NOT NULL,
   role_id INT NOT NULL,
-  manager_id INT,
-  FOREIGN KEY (role_id) REFERENCES roles(id),
-  FOREIGN KEY (manager_id) REFERENCES employees(id)
+  manager_id INT REFERENCES employees(id),
+  FOREIGN KEY (role_id) REFERENCES roles(id)
 );
