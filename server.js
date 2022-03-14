@@ -1,5 +1,4 @@
 const inquirer = require('inquirer');
-const db = require('./db/connection');
 const { viewRecords, updateRecord } = require('./utils/functions');
 
 function init() {
