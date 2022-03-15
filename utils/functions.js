@@ -1,7 +1,8 @@
 const inquirer = require('inquirer');
 const db = require('../db/connection');
-const cTable = require('console.table');
+require('console.table');
 
+// Display "main menu"
 function init() {
   inquirer
     .prompt([
@@ -22,7 +23,13 @@ function init() {
       },
     ])
     .then((answer) => {
+      // Assign the first word (ex. view) and the second word
+      // (ex. employees) to array
       const opt = answer.options.toLowerCase().split(' ');
+      // Run function depending on menu choice
+      // ie. the first word of the opt array
+      // and pass second word of opt array as parameter
+      // ie. employee
       switch (opt[0]) {
         case 'view':
           viewRecords(opt[2]);
@@ -40,6 +47,7 @@ function init() {
     });
 }
 
+// View records based on choice
 function viewRecords(table) {
   let sql;
   switch (table) {
@@ -47,11 +55,13 @@ function viewRecords(table) {
       sql = `SELECT * FROM departments`;
       break;
     case 'roles':
-      sql = `SELECT id AS ID,
-             title AS Title,
-             salary AS Salary,
-             (SELECT name FROM departments WHERE id = roles.department_id) AS Department
-            FROM roles`;
+      sql = `SELECT r.id AS ID,
+             r.title AS Title,
+             r.salary AS Salary,
+             d.name as Department
+             FROM roles r
+             JOIN departments d ON r.department_id = d.id
+             GROUP BY r.id ORDER BY d.name;`;
       break;
     case 'employees':
       sql = `SELECT employees.id AS ID, 
@@ -69,15 +79,60 @@ function viewRecords(table) {
   db.promise()
     .query(sql)
     .then((rows) => {
-      const table = cTable.getTable(rows[0]);
-      console.log(table);
+      console.table(rows[0]);
     })
     .catch(console.log())
     .then(() => init());
 }
 
-function updateRecord(record) {
-  console.log(record);
+function updateRecord() {
+  let empArray = [];
+  let roleArray = [];
+  db.promise()
+    .query(`SELECT first_name, last_name FROM employees;`)
+    .then(([rows, fields]) =>
+      rows.forEach((employee) => {
+        empArray.push(`${employee.first_name} ${employee.last_name}`);
+      })
+    )
+    .then(
+      db
+        .promise()
+        .query(
+          `SELECT roles.title, departments.name AS dept_name FROM roles JOIN departments ON roles.department_id = departments.id;`
+        )
+        .then(([rows, fields]) => {
+          rows.forEach((role) => {
+            roleArray.push(`${role.dept_name}: ${role.title}`);
+          });
+          console.log(roleArray);
+        })
+        .then(() =>
+          inquirer.prompt([
+            {
+              type: 'list',
+              name: 'emp_name',
+              message: "Which employee's role do you want to update?",
+              choices: empArray,
+            },
+            {
+              type: 'list',
+              name: 'emp_role',
+              message: "What is the employee's new role?",
+              choices: roleArray,
+            },
+          ])
+        )
+        .then((answer) => {
+          let empName = answer.emp_name.split(' ');
+          let empRole = answer.emp_role.split(': ');
+          const sql = `UPDATE employees SET role_id = (SELECT roles.id FROM roles WHERE roles.title LIKE '${empRole[1]}' AND department_id = (SELECT departments.id FROM departments WHERE departments.name LIKE '${empRole[0]}')) WHERE employees.first_name LIKE '${empName[0]}' AND employees.last_name LIKE '${empName[1]}';`;
+          db.promise()
+            .query(sql)
+            .then(() => init());
+        })
+        .catch(console.log())
+    );
 }
 
 module.exports = { init, viewRecords, updateRecord };
